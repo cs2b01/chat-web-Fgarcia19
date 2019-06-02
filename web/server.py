@@ -16,6 +16,21 @@ def index():
 def static_content(content):
     return render_template(content)
 
+@app.route('/authenticate', methods=["POST"])
+def authenticate():
+    username=request.form['username']
+    password=request.form['password']
+    session=db.getSession(engine)
+    try:
+        user=session.query(entities.User).filter(entities.User.username ==username).filter(entities.User.password==password).one()
+        return render_template("success.html")
+    except Exception:
+        return render_template("fail.html")
+    # users=session.query(entities.User)
+    # for user in users:
+    #     if user.username==username and user.password == password:
+    #         return render_template("success.html")
+    # return render_template("fail.html")
 
 @app.route('/users', methods = ['GET'])
 def get_users():
@@ -63,6 +78,9 @@ def update_user():
     session.add(user)
     session.commit()
     return 'Updated User'
+@app.route('/msg')
+def msg():
+    return render_template('crud_msg.html')
 
 @app.route('/users', methods = ['DELETE'])
 def delete_user():
@@ -73,6 +91,46 @@ def delete_user():
         session.delete(user)
     session.commit()
     return "Deleted User"
+
+@app.route('/messages', methods = ['GET'])
+def get_messages():
+    session = db.getSession(engine)
+    dbResponse = session.query(entities.Message)
+    data = []
+    for message in dbResponse:
+        data.append(message)
+    return Response(json.dumps(data, cls=connector.AlchemyEncoder), mimetype='application/json')
+
+@app.route('/messages', methods = ['POST'])
+def create_message():
+    t = json.loads(request.form['values'])
+    message = entities.Message(
+        content=t['content'],
+        user_from_id=t['user_from_id'],
+        user_to_id=t['user_to_id']
+    )
+    session = db.getSession(engine)
+    session.add(message)
+    session.commit()
+    return "Message Created"
+
+@app.route('/messages', methods = ['DELETE'])
+def delete_message():
+    id = request.form['key']
+    session = db.getSession(engine)
+    messages = session.query(entities.Message).filter(entities.Message.id == id)
+    for message in messages:
+        session.delete(message)
+    session.commit()
+    return "Message Deleted"
+
+@app.route('/create_test_messages', methods = ['GET'])
+def create_test_messages():
+    db_session = db.getSession(engine)
+    message = entities.Message(content="Test message", user_from_id=1, user_to_id=2)
+    db_session.add(message)
+    db_session.commit()
+    return "Test message created"
 
 if __name__ == '__main__':
     app.secret_key = ".."
